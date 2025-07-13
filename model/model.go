@@ -7,7 +7,8 @@ type User struct {
 	Age   int    `json:"age"`
 }
 
-type MinMax struct {
+type Query struct {
+	Name string
 	Mini int
 	Maxi int
 }

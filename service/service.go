@@ -1,6 +1,7 @@
 package service
 
 import (
+	"strings"
 	"sync"
 
 	"github.com/google/uuid"
@@ -14,7 +15,7 @@ type UserService interface {
 	UpdateUser(model.User) (model.User, error)
 	PatchUser(map[string]interface{}) (model.User, error)
 	DeleteUser(string) error
-	ListUsers(int, int) []model.User
+	ListUsers(string, int, int) []model.User
 }
 
 type userService struct {
@@ -39,8 +40,8 @@ func (s *userService) GetUser(id string) (model.User, error) {
 }
 
 func (s *userService) CreateUser(user model.User) (model.User, error) {
-	if user.Name == "" || user.Email == "" || user.Age <= 0 {
-		return model.User{}, errs.ErrInvalidField
+	if err := errs.ValidateUser(user); err != nil {
+		return model.User{}, err
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -51,8 +52,8 @@ func (s *userService) CreateUser(user model.User) (model.User, error) {
 }
 
 func (s *userService) UpdateUser(updatedUser model.User) (model.User, error) {
-	if updatedUser.Name == "" || updatedUser.Email == "" || updatedUser.Age <= 0 {
-		return model.User{}, errs.ErrInvalidField
+	if err := errs.ValidateUser(updatedUser); err != nil {
+		return model.User{}, err
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -75,19 +76,19 @@ func (s *userService) PatchUser(patchedUser map[string]interface{}) (model.User,
 		return model.User{}, errs.ErrNotFound
 	}
 	if name, ok := patchedUser["name"].(string); ok {
-		if name == "" {
+		if !errs.CheckName(name) {
 			return model.User{}, errs.ErrInvalidField
 		}
 		user.Name = name
 	}
 	if email, ok := patchedUser["email"].(string); ok {
-		if email == "" {
+		if !errs.CheckEmail(email) {
 			return model.User{}, errs.ErrInvalidField
 		}
 		user.Email = email
 	}
 	if age, ok := patchedUser["age"].(float64); ok {
-		if int(age) <= 0 {
+		if !errs.CheckAge(int(age)) {
 			return model.User{}, errs.ErrInvalidField
 		}
 		user.Age = int(age)
@@ -107,11 +108,14 @@ func (s *userService) DeleteUser(id string) error {
 	return nil
 }
 
-func (s *userService) ListUsers(minAge, maxAge int) []model.User {
+func (s *userService) ListUsers(name string, minAge, maxAge int) []model.User {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	var users []model.User = []model.User{}
 	for _, user := range s.users {
+		if name != "" && !strings.EqualFold(name, user.Name) {
+			continue
+		}
 		if minAge != 0 && user.Age < minAge {
 			continue
 		}

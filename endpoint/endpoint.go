@@ -85,8 +85,8 @@ func makeDeleteUserEndpoint(svc service.UserService) endpoint.Endpoint {
 
 func makeListUsersEndpoint(svc service.UserService) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (interface{}, error) {
-		req := request.(model.MinMax)
-		users := svc.ListUsers(req.Mini, req.Maxi)
+		req := request.(model.Query)
+		users := svc.ListUsers(req.Name, req.Mini, req.Maxi)
 		return users, nil
 	}
 }

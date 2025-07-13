@@ -86,14 +86,15 @@ func (lmw *loggingMiddleware) DeleteUser(id string) (err error) {
 	return
 }
 
-func (lmw *loggingMiddleware) ListUsers(minAge, maxAge int) []model.User {
+func (lmw *loggingMiddleware) ListUsers(name string, minAge, maxAge int) []model.User {
 	defer func(start time.Time) {
 		_ = lmw.logger.Log(
 			"method", "ListUsers",
+			"name", name,
 			"minAge", minAge,
 			"maxAge", maxAge,
 			"took", time.Since(start),
 		)
 	}(time.Now())
-	return lmw.next.ListUsers(minAge, maxAge)
+	return lmw.next.ListUsers(name, minAge, maxAge)
 }

@@ -3,11 +3,13 @@ package transport
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strconv"
 
 	httptransport "github.com/go-kit/kit/transport/http"
 	"github.com/gorilla/mux"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/shivamks5/userserv/endpoint"
 	"github.com/shivamks5/userserv/errs"
 	"github.com/shivamks5/userserv/model"
@@ -57,6 +59,7 @@ func MakeHTTPHandler(eps endpoint.Endpoints) http.Handler {
 	r.Methods("PATCH").Path("/users/{id}").Handler(patchUserHandler)
 	r.Methods("DELETE").Path("/users/{id}").Handler(deleteUserHandler)
 	r.Methods("GET").Path("/users").Handler(listUsersHandler)
+	r.Methods("GET").Path("/metrics").Handler(promhttp.Handler())
 	return r
 }
 
@@ -103,23 +106,24 @@ func decodeDeleteRequest(ctx context.Context, r *http.Request) (interface{}, err
 
 func decodeListRequest(ctx context.Context, r *http.Request) (interface{}, error) {
 	var err error
-	var minmax model.MinMax
+	var qParams model.Query
 	query := r.URL.Query()
 	minAge := query.Get("min")
 	maxAge := query.Get("max")
+	qParams.Name = query.Get("name")
 	if minAge != "" {
-		minmax.Mini, err = strconv.Atoi(minAge)
+		qParams.Mini, err = strconv.Atoi(minAge)
 		if err != nil {
 			return nil, errs.ErrBadRequest
 		}
 	}
 	if maxAge != "" {
-		minmax.Maxi, err = strconv.Atoi(maxAge)
+		qParams.Maxi, err = strconv.Atoi(maxAge)
 		if err != nil {
 			return nil, errs.ErrBadRequest
 		}
 	}
-	return minmax, nil
+	return qParams, nil
 }
 
 func encodeResponse(ctx context.Context, w http.ResponseWriter, response interface{}) error {
@@ -130,10 +134,10 @@ func encodeResponse(ctx context.Context, w http.ResponseWriter, response interfa
 func encodeError(ctx context.Context, err error, w http.ResponseWriter) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	var code int
-	switch err {
-	case errs.ErrBadRequest, errs.ErrInvalidField:
+	switch {
+	case errors.Is(err, errs.ErrBadRequest), errors.Is(err, errs.ErrInvalidField):
 		code = http.StatusBadRequest
-	case errs.ErrNotFound:
+	case errors.Is(err, errs.ErrNotFound):
 		code = http.StatusNotFound
 	default:
 		code = http.StatusInternalServerError
