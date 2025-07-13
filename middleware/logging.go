@@ -33,17 +33,43 @@ func (lmw *loggingMiddleware) GetUser(id string) (user model.User, err error) {
 	return
 }
 
-func (lmw *loggingMiddleware) CreateUser(user model.User) (id string, err error) {
+func (lmw *loggingMiddleware) CreateUser(user model.User) (resp model.User, err error) {
 	defer func(start time.Time) {
 		_ = lmw.logger.Log(
 			"method", "CreateUser",
-			"id", id,
+			"id", resp.ID,
 			"name", user.Name,
 			"error", err,
 			"took", time.Since(start),
 		)
 	}(time.Now())
-	id, err = lmw.next.CreateUser(user)
+	resp, err = lmw.next.CreateUser(user)
+	return
+}
+
+func (lmw *loggingMiddleware) UpdateUser(updatedUser model.User) (user model.User, err error) {
+	defer func(start time.Time) {
+		_ = lmw.logger.Log(
+			"method", "UpdateUser",
+			"id", user.ID,
+			"err", err,
+			"took", time.Since(start),
+		)
+	}(time.Now())
+	user, err = lmw.next.UpdateUser(updatedUser)
+	return
+}
+
+func (lmw *loggingMiddleware) PatchUser(patchedUser map[string]interface{}) (user model.User, err error) {
+	defer func(start time.Time) {
+		_ = lmw.logger.Log(
+			"method", "PatchUser",
+			"id", user.ID,
+			"err", err,
+			"took", time.Since(start),
+		)
+	}(time.Now())
+	user, err = lmw.next.PatchUser(patchedUser)
 	return
 }
 
@@ -60,12 +86,14 @@ func (lmw *loggingMiddleware) DeleteUser(id string) (err error) {
 	return
 }
 
-func (lmw *loggingMiddleware) ListUsers() []model.User {
+func (lmw *loggingMiddleware) ListUsers(minAge, maxAge int) []model.User {
 	defer func(start time.Time) {
 		_ = lmw.logger.Log(
 			"method", "ListUsers",
+			"minAge", minAge,
+			"maxAge", maxAge,
 			"took", time.Since(start),
 		)
 	}(time.Now())
-	return lmw.next.ListUsers()
+	return lmw.next.ListUsers(minAge, maxAge)
 }

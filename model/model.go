@@ -7,10 +7,7 @@ type User struct {
 	Age   int    `json:"age"`
 }
 
-type IDNumber struct {
-	ID string `json:"id"`
-}
-
-type Response struct {
-	Data interface{} `json:"data"`
+type MinMax struct {
+	Mini int
+	Maxi int
 }
